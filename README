@@ -1,4 +1,4 @@
-naivefs, 抄袭自 [此处](https://zhuanlan.zhihu.com/p/671351360), 经过 finetune 和适当功能增加，目前支持：
+naivefs, 抄袭自 [此处](https://zhuanlan.zhihu.com/p/671351360), 经过 finetune 和适当功能增加，目前他可以跑在 `linux-5.4.0` 上，并且其支持：
 
 - 创建一个文件
 - 创建一个文件夹
