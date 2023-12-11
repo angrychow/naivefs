@@ -1,0 +1,8 @@
+naivefs, 抄袭自 [此处](https://zhuanlan.zhihu.com/p/671351360), 经过 finetune 和适当功能增加，目前支持：
+
+- 创建一个文件
+- 创建一个文件夹
+- 删除一个文件
+- 删除一个文件夹
+
+原理同 ramfs。

@@ -1,0 +1,19 @@
+{
+    "files.associations": {
+        "uaccess.h": "c",
+        "sched.h": "c",
+        "fs.h": "c",
+        "init.h": "c",
+        "stat.h": "c",
+        "stdint.h": "c",
+        "fscrypt.h": "c",
+        "kdev_t.h": "c",
+        "kasan-checks.h": "c",
+        "cstdint": "c",
+        "string.h": "c",
+        "module.h": "c",
+        "typeinfo": "c",
+        "list.h": "c"
+    },
+    "C_Cpp.default.systemIncludePath": []
+}
