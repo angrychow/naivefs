@@ -312,7 +312,7 @@ int naive_fs_rmdir(struct inode *dir, struct dentry *dentry) {
             if(S_ISDIR(son_inode->i_mode)) {
                 naive_fs_rmdir(inode, child_dentry);
             } else {
-                naive_fs_rmdir(inode, child_dentry);
+                naive_fs_unlink(inode, child_dentry);
             }
         }
     }
