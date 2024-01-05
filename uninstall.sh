@@ -1,1 +1,2 @@
-lsof +D /mnt 
+umount /mnt
+make uninstall

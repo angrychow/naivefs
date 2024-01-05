@@ -3,22 +3,17 @@
         {
             "name": "Linux",
             "includePath": [
-                "/usr/src/linux-headers-5.4.0-167/include",
-                "/usr/src/linux-headers-5.4.0-167/include/uapi",
-                "/usr/src/linux-headers-5.4.0-167/arch/x86/include",
-                "/usr/src/linux-headers-5.4.0-167/arch/x86/include/uapi",
-                "/usr/src/linux-headers-5.4.0-167-generic/include",
-                "/usr/src/linux-headers-5.4.0-167-generic/include/uapi",
-                "/usr/src/linux-headers-5.4.0-167-generic/arch/x86/include",
-                "/usr/src/linux-headers-5.4.0-167-generic/arch/x86/include/uapi",
-                "/lib/modules/5.4.0-167-generic/build/arch/x86/include/generated",
-                "/lib/modules/5.4.0-167-generic/build/arch/x86/include",
-                "${workspaceFolder}/**",
-                "/usr/local/include"
+                "/usr/lib/gcc/x86_64-linux-gnu/9/include",
+                "/usr/include",
+                "/usr/include/linux",
+                "/lib/modules/5.4.0-169-generic/build/include",
+                "/lib/modules/5.4.0-169-generic/build/arch/x86/include",
+                "/lib/modules/5.4.0-169-generic/build/arch/x86/include/generated",
+                "${workspaceFolder}/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc-9",
-            "cStandard": "c11",
+            "cStandard": "c17",
             "cppStandard": "gnu++14",
             "intelliSenseMode": "linux-gcc-x64",
             "forcedInclude": []

@@ -1,4 +1,4 @@
-
+#include <linux/stddef.h>
 #include <linux/init.h>
 #include <linux/fs.h>
 #include <linux/uaccess.h>
@@ -6,14 +6,11 @@
 #include <linux/list.h>
 #include <linux/types.h>
 #include <linux/kern_levels.h>
-
+#include <linux/stat.h>
 #include "naivefs.h"
 
-// make intellisense happy
+typedef unsigned long size_t;
 
-// #define size_t int64_t
-// #define min(x,y) (x) < (y) ? (x) : (y)
-// #define bool char
 
 
 struct file_blk block[MAX_FILES + 1];
@@ -76,11 +73,15 @@ ssize_t naive_fs_read(
 ) {
     struct file_blk *blk = filp->f_path.dentry->d_inode->i_private;
     char *buffer = (char*) blk->data;
-    printk(KERN_EMERG "Read: %lld", *ppos);
+    printk(KERN_EMERG "Read Operation, Start from %d, Length %d", *ppos, len);
     if(*ppos >= blk->file_size) { // 越界
         return 0;
     }
-    len = min((size_t)blk->file_size, len); // less than blk size
+    // len = min((size_t)blk->file_size, len); // less than blk size
+    // len = len > size_t(blk->file_size) ? size_t(blk->file_size) : len ;
+    if(len > (size_t)blk->file_size) {
+        len = (size_t)blk->file_size;
+    }
     if(copy_to_user(buf, buffer, len)) {
         return -EFAULT;
     }
@@ -98,7 +99,7 @@ ssize_t naive_fs_write(
     char *buffer = (char*) blk->data;
     buffer += *ppos;
 
-    printk(KERN_EMERG "Read: %d", len);
+    printk(KERN_EMERG "Write Operation, Start from %d, Length %d", *ppos, len);
 
     if(*ppos + len >= 512) { // 越界
         return -EFAULT;
@@ -111,9 +112,40 @@ ssize_t naive_fs_write(
     return len;
 }
 
+int naive_fs_open(struct inode *inode, struct file * filp) {
+    if(filp->f_flags & O_APPEND) {
+        struct file_blk* blk = (struct file_blk*)inode->i_private;
+        filp->f_pos += blk->file_size;
+    }
+    return 0;
+}
+
+loff_t naive_fs_llseek(struct file *filp, loff_t offset, int mode) {
+    loff_t new_ppos = 0;
+    size_t file_size = ((struct file_blk*)filp->f_inode->i_private)->file_size;
+    switch(mode){
+    case SEEK_SET:
+        new_ppos = offset;
+        break;
+    case SEEK_CUR:
+        new_ppos = filp->f_pos + offset;
+        break;
+    case SEEK_END:
+        new_ppos = file_size + offset;
+        break;
+    }
+    if(file_size < offset || offset > 512) {
+        offset = file_size;
+    }
+    filp->f_pos = offset;
+    return offset;
+}
+
 const struct file_operations naive_fs_file_operations = {
     .read = naive_fs_read,
     .write = naive_fs_write,
+    .open = naive_fs_open,
+    .llseek = naive_fs_llseek
 };
 
 static const struct file_operations naive_fs_dir_operations = {
@@ -160,7 +192,7 @@ static int naive_fs_do_create(
         return -ENOMEM;
     }
 
-    printk(KERN_EMERG "create: %d", idx);
+    printk(KERN_EMERG "create file, file index: %d", idx);
 
     blk = &block[idx];
     inode->i_ino = idx;
@@ -397,4 +429,4 @@ static void naive_fs_exit(void) {
 module_init(naive_fs_init);
 module_exit(naive_fs_exit);
 
-MODULE_LICENSE("GPL v2");
+MODULE_LICENSE("Dual BSD/GPL");

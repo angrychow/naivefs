@@ -13,7 +13,17 @@
         "string.h": "c",
         "module.h": "c",
         "typeinfo": "c",
-        "list.h": "c"
+        "list.h": "c",
+        "*.tcc": "c",
+        "cstdio": "c",
+        "type_traits": "c",
+        "kern_levels.h": "c",
+        "stddef.h": "c",
+        "types.h": "c",
+        "stdbool.h": "c",
+        "naivefs.h": "c",
+        "compiler_types.h": "c"
     },
-    "C_Cpp.default.systemIncludePath": []
+    "C_Cpp.default.systemIncludePath": [],
+    "C_Cpp.intelliSenseEngineFallback": "enabled"
 }
