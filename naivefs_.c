@@ -7,6 +7,9 @@
 #include <linux/types.h>
 #include <linux/kern_levels.h>
 #include <linux/stat.h>
+#include <linux/slab.h>
+
+// #include <stdbool.h>
 #include "naivefs.h"
 
 typedef unsigned long size_t;
@@ -25,10 +28,20 @@ static int get_block(void) {
     for(i = 2; i < MAX_FILES; i++) {
         if(!block[i].busy) {
             block[i].busy = 1;
+            block[i].idx = i;
+            block[i].next_block_idx = 0;
             return i;
         }
     }
     return BLOCK_NOT_FOUND;
+}
+
+static void disconnected_block(int idx) {
+    if(idx == 0) return;
+    if(block[idx].next_block_idx != 0) {
+        disconnected_block(block[idx].next_block_idx);
+    }
+    block[idx].busy = 0;
 }
 
 // 读目录
@@ -47,13 +60,29 @@ static int naive_fs_readdir(struct file *filp, struct dir_context *ctx) {
     }
     entry = (struct dir_entry *)&blk->data;
     int i;
-    for(i = 0; i < blk->dir_children; i++) {
+    int block_count;
+    int block_i = 0;
+    for (
+        i = 0, block_count = 0, block_i = 0;
+        i < blk->dir_children;
+        i++, block_i++
+    ) {
+        if(block_i * sizeof(struct dir_entry *) >= NAIVE_FS_BLOCK_SIZE) {
+            if(blk->next_block_idx == 0) {
+                // Overflow!
+                return -EFAULT;
+            }
+            blk = &block[blk->next_block_idx];
+            entry = (struct dir_entry *)blk->data;
+            block_i = 0;
+            block_count++;
+        }
         if(
             !dir_emit(
                 ctx,
-                entry[i].filename,
-                strlen(entry[i].filename),
-                entry[i].idx,
+                entry[block_i].filename,
+                strlen(entry[block_i].filename),
+                entry[block_i].idx,
                 DT_UNKNOWN
             )
         ) {
@@ -72,8 +101,8 @@ ssize_t naive_fs_read(
     loff_t *ppos
 ) {
     struct file_blk *blk = filp->f_path.dentry->d_inode->i_private;
-    char *buffer = (char*) blk->data;
-    printk(KERN_EMERG "Read Operation, Start from %d, Length %d", *ppos, len);
+    // char *buffer = (char*) blk->data;
+    printk(KERN_EMERG "Read Operation, Start from %d, Length %d, file size %d", *ppos, len, blk->file_size);
     if(*ppos >= blk->file_size) { // 越界
         return 0;
     }
@@ -82,9 +111,21 @@ ssize_t naive_fs_read(
     if(len > (size_t)blk->file_size) {
         len = (size_t)blk->file_size;
     }
+    char *buffer = (char*) vmalloc(len);
+    int i, i_mod;
+    for(i = 0, i_mod = 0; i < len; i++, i_mod++) {
+        if(i_mod >= NAIVE_FS_BLOCK_SIZE) {
+            i_mod = 0;
+            blk = &block[blk->next_block_idx];
+        }
+        printk(KERN_EMERG "%c", (blk->data)[i_mod]);
+        buffer[i] = (blk->data)[i_mod];
+    }
     if(copy_to_user(buf, buffer, len)) {
+        vfree(buffer);
         return -EFAULT;
     }
+    vfree(buffer);
     *ppos += len;
     return len;
 }
@@ -96,20 +137,72 @@ ssize_t naive_fs_write(
     loff_t *ppos
 ) {
     struct file_blk *blk = filp->f_path.dentry->d_inode->i_private;
-    char *buffer = (char*) blk->data;
-    buffer += *ppos;
-
+    // char *buffer = (char*) blk->data;
+    // buffer += *ppos;
+    loff_t ppos_now = *ppos;
+    size_t len_backup = len;
+    struct file_blk *blk_backup = blk;
+    
     printk(KERN_EMERG "Write Operation, Start from %d, Length %d", *ppos, len);
-
-    if(*ppos + len >= 512) { // 越界
-        return -EFAULT;
+    char* temp = (char *)vmalloc(len);
+    char* temp_backup = temp;
+    size_t last_copy;
+    while(last_copy = copy_from_user(temp, buf, len)) {
+        len = last_copy;
+        // vfree(temp_backup);
+        // return -EFAULT;
     }
-    if(copy_from_user(buffer, buf, len)) {
-        return -EFAULT;
+    printk(KERN_EMERG "last_copy: %u", last_copy);
+    while(ppos_now >= NAIVE_FS_BLOCK_SIZE) {
+        printk(KERN_EMERG"idx: %u, next_idx: %u", blk->idx, blk->next_block_idx);
+        if(!blk->next_block_idx) {
+            if(ppos_now == NAIVE_FS_BLOCK_SIZE){
+                ppos_now = 0;
+                if((blk->next_block_idx = get_block()) == BLOCK_NOT_FOUND) {
+                    blk->next_block_idx = 0;
+                    return -EFAULT;
+                }
+                blk = block + blk->next_block_idx;
+                break;
+            }
+            return -EFAULT;
+        }
+        blk = block + blk->next_block_idx;
+        ppos_now -= NAIVE_FS_BLOCK_SIZE;
     }
-    *ppos += len;
-    blk->file_size += *ppos;
-    return len;
+    while(len != 0) {
+        printk(KERN_EMERG "ppos_now: %u", ppos_now);
+        char *buffer = blk->data;
+        size_t copy_size;
+        if(len <= NAIVE_FS_BLOCK_SIZE - ppos_now) {
+            copy_size = len;
+        } else {
+            copy_size = NAIVE_FS_BLOCK_SIZE - ppos_now;
+        }
+        int i;
+        for(i = 0; i < copy_size; i++) {
+            buffer[ppos_now + i] = *temp;
+            temp++;
+        }
+        len -= copy_size;
+        printk(KERN_EMERG "block_idx: %u, len: %u", blk->idx, len);
+        if(len == 0) break;
+        if(blk->next_block_idx != 0) {
+            disconnected_block(blk->next_block_idx); // recursive
+        }
+        if((blk->next_block_idx = get_block()) == BLOCK_NOT_FOUND) {
+            blk->next_block_idx = 0;
+            return -EFAULT;
+        }
+        printk(KERN_EMERG "next_block_idx: %u, len: %u", blk->next_block_idx, len);
+        blk = &block[blk->next_block_idx];
+        ppos_now = (ppos_now + copy_size) % NAIVE_FS_BLOCK_SIZE;
+    }
+    vfree(temp_backup);
+    *ppos += len_backup;
+    blk_backup->file_size = *ppos;
+    printk(KERN_EMERG "file_size: %u, len_backup: %u", blk_backup->file_size, *ppos);
+    return len_backup;
 }
 
 int naive_fs_open(struct inode *inode, struct file * filp) {
@@ -134,7 +227,7 @@ loff_t naive_fs_llseek(struct file *filp, loff_t offset, int mode) {
         new_ppos = file_size + offset;
         break;
     }
-    if(file_size < offset || offset > 512) {
+    if(file_size < offset) {
         offset = file_size;
     }
     filp->f_pos = offset;

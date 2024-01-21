@@ -22,7 +22,8 @@
         "types.h": "c",
         "stdbool.h": "c",
         "naivefs.h": "c",
-        "compiler_types.h": "c"
+        "compiler_types.h": "c",
+        "slab.h": "c"
     },
     "C_Cpp.default.systemIncludePath": [],
     "C_Cpp.intelliSenseEngineFallback": "enabled"

@@ -6,3 +6,5 @@ naivefs, 抄袭自 [此处](https://zhuanlan.zhihu.com/p/671351360), 经过 fine
 - 删除一个文件夹
 
 原理同 ramfs。
+
+update 1.22.2024: data block become extendable.

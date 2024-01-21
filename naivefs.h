@@ -1,5 +1,5 @@
 #define MAX_FILENAME_LEN 8
-#define MAX_FILES 32
+#define MAX_FILES 128
 #define NAIVE_FS_BLOCK_SIZE 512
 #define BLOCK_NOT_FOUND -1
 
@@ -15,8 +15,9 @@ struct file_blk {
     mode_t mode;
     uint8_t idx;
     union {
-        uint8_t file_size;
-        uint8_t dir_children;
+        size_t file_size;
+        size_t dir_children;
     };
-    char data[512];
+    char data[NAIVE_FS_BLOCK_SIZE];
+    uint8_t next_block_idx;
 };
